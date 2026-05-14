@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Übung 2: Registerzuordnung</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #15803d;
+      --error: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --zone: #f1f5f9;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
+    }
+
+    .exercise-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(1rem, 4vw, 2rem);
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h2 { font-size: clamp(1.25rem, 4vw, 1.75rem); margin-bottom: 0.5rem; }
+    .intro { color: var(--text-muted); margin-bottom: 1.5rem; }
+
+    .source-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+      min-height: 64px;
+      padding: 0.5rem;
+    }
+
+    .item {
+      background: #e2e8f0;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      font-size: 1.05rem;
+      cursor: grab;
+      user-select: none;
+      touch-action: manipulation;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.2s;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 130px;
+    }
+
+    .item:active { transform: scale(0.98); }
+    .item.selected { border-color: var(--primary); box-shadow: 0 0 0 3px rgb(37 99 235 / 0.25); background: #eff6ff; }
+    .item.dragging { opacity: 0.4; border-style: dashed; }
+    .item.correct { border-color: var(--success); background: #dcfce7; color: var(--success); font-weight: 600; }
+    .item.incorrect { border-color: var(--error); background: #fee2e2; color: var(--error); }
+
+    .target-area {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .target-area { grid-template-columns: 1fr 1fr; }
+    }
+
+    .drop-zone {
+      background: var(--zone);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      min-height: 140px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .drop-zone.drag-over { border-color: var(--primary); background: #eff6ff; }
+    .drop-zone h3 {
+      font-size: 1rem;
+      color: #334155;
+      margin-bottom: 0.75rem;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .zone-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      min-height: 60px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+    button {
+      flex: 1;
+      padding: 0.875rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      min-height: 48px;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    #checkBtn { background: var(--primary); color: white; }
+    #checkBtn:hover { background: #1d4ed8; }
+    #resetBtn { background: #e2e8f0; color: var(--text); }
+    #resetBtn:hover { background: #cbd5e1; }
+
+    .feedback {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      border-radius: 8px;
+      display: none;
+      font-size: 0.95rem;
+    }
+
+    .feedback.success { background: #dcfce7; color: var(--success); border-left: 4px solid var(--success); }
+    .feedback.error { background: #fee2e2; color: var(--error); border-left: 4px solid var(--error); }
+
+    /* Visuelle Drag-Hinweise nur für Desktop */
+    @media (hover: hover) and (pointer: fine) {
+      .item { cursor: grab; }
+      .drop-zone:hover { border-color: var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="exercise-card" role="main">
+    <h2>Aufgabe 2: Registerzuordnung</h2>
+    <p class="intro">
+      Ordne die russischen Ausdrücke der passenden Kategorie zu. 
+      Auf Touchgeräten: Tippe einen Ausdruck an, dann tippe auf die Zielkategorie. 
+      Auf Desktop: Ziehe die Karten per Maus in die passende Box.
+    </p>
+
+    <section class="source-area" aria-label="Zuordnungsquellen">
+      <div class="item" draggable="true" data-id="kak-tak">как так</div>
+      <div class="item" draggable="true" data-id="kak-sluchilos">как это случилось</div>
+      <div class="item" draggable="true" data-id="kak-proizoshlo">как это произошло</div>
+    </section>
+
+    <section class="target-area" aria-label="Kategorien">
+      <div class="drop-zone" data-category="umgangssprachlich">
+        <h3>Umgangssprachlich</h3>
+        <div class="zone-content"></div>
+      </div>
+      <div class="drop-zone" data-category="formell">
+        <h3>Formell</h3>
+        <div class="zone-content"></div>
+      </div>
+    </section>
+
+    <div class="controls">
+      <button id="checkBtn">Überprüfen</button>
+      <button id="resetBtn">Zurücksetzen</button>
+    </div>
+
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const items = document.querySelectorAll('.item');
+      const zones = document.querySelectorAll('.drop-zone');
+      const checkBtn = document.getElementById('checkBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const feedback = document.getElementById('feedback');
+      let selectedItem = null;
+
+      const correctMap = {
+        'kak-tak': 'umgangssprachlich',
+        'kak-sluchilos': 'formell',
+        'kak-proizoshlo': 'formell'
+      };
+
+      // --- Interaktion: Klick/Tippen ---
+      items.forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (selectedItem === item) {
+            // Bereits ausgewählt: zurück zur Quelle
+            document.querySelector('.source-area').appendChild(item);
+            item.classList.remove('selected');
+            selectedItem = null;
+          } else {
+            if (selectedItem) selectedItem.classList.remove('selected');
+            selectedItem = item;
+            item.classList.add('selected');
+          }
+        });
+      });
+
+      zones.forEach(zone => {
+        zone.addEventListener('click', () => {
+          if (selectedItem) {
+            zone.querySelector('.zone-content').appendChild(selectedItem);
+            selectedItem.classList.remove('selected');
+            selectedItem.dataset.zone = zone.dataset.category;
+            selectedItem = null;
+          }
+        });
+      });
+
+      // --- Interaktion: Drag & Drop (Desktop) ---
+      items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', item.dataset.id);
+          item.classList.add('dragging');
+          setTimeout(() => item.classList.add('dragging'), 0);
+        });
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+        });
+      });
+
+      zones.forEach(zone => {
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('drag-over');
+          const id = e.dataTransfer.getData('text/plain');
+          const draggedItem = document.querySelector(`[data-id="${id}"]`);
+          if (draggedItem) {
+            zone.querySelector('.zone-content').appendChild(draggedItem);
+            draggedItem.dataset.zone = zone.dataset.category;
+            draggedItem.classList.remove('dragging', 'selected');
+          }
+        });
+      });
+
+      document.querySelector('.source-area').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget && selectedItem) {
+          document.querySelector('.source-area').appendChild(selectedItem);
+          selectedItem.classList.remove('selected');
+          selectedItem = null;
+        }
+      });
+
+      // --- Validierung & Feedback ---
+      checkBtn.addEventListener('click', () => {
+        let correct = 0;
+        let placed = 0;
+        items.forEach(item => {
+          item.classList.remove('correct', 'incorrect');
+          if (item.dataset.zone) {
+            placed++;
+            if (item.dataset.zone === correctMap[item.dataset.id]) {
+              item.classList.add('correct');
+              correct++;
+            } else {
+              item.classList.add('incorrect');
+            }
+          }
+        });
+
+        feedback.style.display = 'block';
+        if (placed < items.length) {
+          feedback.className = 'feedback error';
+          feedback.textContent = 'Bitte ordne alle drei Ausdrücke einer Kategorie zu.';
+        } else if (correct === items.length) {
+          feedback.className = 'feedback success';
+          feedback.innerHTML = 'Richtig! <span style="font-weight:600">„как так"</span> ist umgangssprachlich und signalisiert Überraschung. In formellen Situationen oder beim Schreiben solltest du <span style="font-weight:600">„как это случилось"</span> oder <span style="font-weight:600">„как это произошло"</span> verwenden.';
+        } else {
+          feedback.className = 'feedback error';
+          feedback.textContent = `${correct} von 3 korrekt. Überprüfe die rot markierten Karten und nutze die Hinweise zur Formalität.`;
+        }
+        checkBtn.focus();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        const source = document.querySelector('.source-area');
+        items.forEach(item => {
+          source.appendChild(item);
+          item.classList.remove('selected', 'correct', 'incorrect', 'dragging');
+          delete item.dataset.zone;
+        });
+        selectedItem = null;
+        feedback.style.display = 'none';
+        checkBtn.focus();
+      });
+    });
+  </script>
+</body>
+</html>
