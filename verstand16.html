@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Übung 1: Multiple-Choice</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #15803d;
+      --error: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #cbd5e1;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .quiz-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(1.25rem, 5vw, 2rem);
+      max-width: 680px;
+      width: 100%;
+    }
+
+    h2 {
+      font-size: clamp(1.25rem, 4vw, 1.75rem);
+      margin-bottom: 0.5rem;
+    }
+
+    .task-desc {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .russian { font-weight: 600; }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (min-width: 640px) {
+      .options { grid-template-columns: 1fr 1fr; }
+    }
+
+    .opt-btn {
+      background: #f1f5f9;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: clamp(1rem, 3.5vw, 1.15rem);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      min-height: 48px; /* Touch-friendly */
+      width: 100%;
+    }
+
+    .opt-btn:hover:not(:disabled) { background: #e2e8f0; border-color: var(--primary); }
+    .opt-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+    .opt-btn:disabled { cursor: default; opacity: 0.65; }
+
+    .opt-btn.correct { background: #dcfce7; border-color: var(--success); color: var(--success); font-weight: 600; }
+    .opt-btn.incorrect { background: #fee2e2; border-color: var(--error); color: var(--error); }
+
+    .feedback {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      display: none;
+      font-size: 0.95rem;
+    }
+
+    .feedback.success { background: #dcfce7; color: var(--success); border-left: 4px solid var(--success); }
+    .feedback.error { background: #fee2e2; color: var(--error); border-left: 4px solid var(--error); }
+
+    .reset-btn {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1.5rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      min-height: 44px;
+      transition: background 0.2s;
+    }
+
+    .reset-btn:hover { background: var(--primary-hover); }
+    .reset-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <main class="quiz-card" role="main">
+    <h2>Verständnisfrage</h2>
+    <p class="task-desc">
+      Welche deutsche Entsprechung passt am besten für den umgangssprachlichen Ausdruck <span class="russian">как так</span>?
+    </p>
+
+    <div class="options" role="group" aria-label="Antwortmöglichkeiten">
+      <button class="opt-btn" data-correct="false">„Was meinst du?"</button>
+      <button class="opt-btn" data-correct="true">„Wie kommt das denn?"</button>
+      <button class="opt-btn" data-correct="false">„Warum nicht?"</button>
+      <button class="opt-btn" data-correct="false">„Wer ist das?"</button>
+    </div>
+
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+    <button id="resetBtn" class="reset-btn hidden">Noch einmal versuchen</button>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const options = document.querySelectorAll('.opt-btn');
+      const feedback = document.getElementById('feedback');
+      const resetBtn = document.getElementById('resetBtn');
+
+      options.forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Sperre alle Buttons nach Auswahl
+          options.forEach(b => b.disabled = true);
+
+          const isCorrect = btn.dataset.correct === 'true';
+
+          if (isCorrect) {
+            btn.classList.add('correct');
+            feedback.innerHTML = `
+              <strong>Richtig!</strong><br>
+              <span class="russian">как так</span> wird in der Umgangssprache genau wie „Wie kommt das denn?" verwendet. 
+              Es drückt Überraschung aus und signalisiert, dass du wissen möchtest, wie etwas passiert ist. 
+              Im formellen Kontext wäre <span class="russian">как это случилось</span> oder <span class="russian">как это произошло</span> passender.
+            `;
+            feedback.className = 'feedback success';
+          } else {
+            btn.classList.add('incorrect');
+            // Markiere die richtige Antwort zur Lernsicherung
+            options.forEach(b => { if (b.dataset.correct === 'true') b.classList.add('correct'); });
+            feedback.innerHTML = `
+              <strong>Nicht ganz.</strong><br>
+              Die passende Entsprechung ist „Wie kommt das denn?". <span class="russian">как так</span> 
+              ist eine lockere Reaktion auf überraschende Nachrichten. Vermeide es in offiziellen Situationen; 
+              dort nutzt man besser <span class="russian">как это случилось</span>.
+            `;
+            feedback.className = 'feedback error';
+          }
+
+          feedback.style.display = 'block';
+          resetBtn.classList.remove('hidden');
+          resetBtn.focus();
+        });
+      });
+
+      resetBtn.addEventListener('click', () => {
+        options.forEach(b => {
+          b.disabled = false;
+          b.classList.remove('correct', 'incorrect');
+        });
+        feedback.style.display = 'none';
+        feedback.innerHTML = '';
+        resetBtn.classList.add('hidden');
+        options[0].focus();
+      });
+    });
+  </script>
+</body>
+</html>
