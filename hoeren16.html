@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Übung 3: Hörverstehen mit TTS</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #15803d;
+      --error: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #cbd5e1;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
+    }
+
+    .exercise-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(1rem, 4vw, 2rem);
+      max-width: 720px;
+      width: 100%;
+    }
+
+    h2 { font-size: clamp(1.25rem, 4vw, 1.75rem); margin-bottom: 0.5rem; }
+    .intro { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+
+    .progress { display: flex; gap: 0.25rem; margin-bottom: 1rem; justify-content: center; }
+    .progress-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background 0.2s; }
+    .progress-dot.active { background: var(--primary); }
+    .progress-dot.done { background: var(--success); }
+
+    /* TTS Player */
+    .tts-player {
+      background: #f1f5f9;
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .player-header { display: flex; align-items: center; gap: 1rem; }
+
+    .tts-btn {
+      width: 48px; height: 48px; border-radius: 50%; border: none;
+      background: var(--primary); color: white; font-size: 1.25rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.2s, transform 0.1s; min-height: 48px;
+    }
+    .tts-btn:hover { background: var(--primary-hover); }
+    .tts-btn:active { transform: scale(0.95); }
+    .tts-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .tts-btn.playing::before { content: "⏸"; }
+    .tts-btn:not(.playing)::before { content: "▶"; }
+
+    .player-info { flex: 1; min-width: 0; }
+    .player-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .player-status { font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; }
+
+    .dialog-preview {
+      background: #f8fafc; border-left: 3px solid var(--primary);
+      padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.9rem;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    .dialog-line { margin: 0.25rem 0; }
+    .russian { font-weight: 600; } /* Explizit kein font-style: italic */
+
+    /* Questions */
+    .question-block { margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+    .question-block:last-of-type { border-bottom: none; margin-bottom: 1rem; padding-bottom: 0; }
+    .question { font-weight: 600; margin-bottom: 0.75rem; font-size: 1rem; }
+
+    .options { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+    @media (min-width: 640px) { .options { grid-template-columns: 1fr 1fr; } }
+
+    .opt-btn {
+      background: #f1f5f9; border: 2px solid var(--border); border-radius: 10px;
+      padding: 0.875rem 1rem; font-size: 0.95rem; cursor: pointer; transition: all 0.2s;
+      text-align: left; min-height: 48px; width: 100%;
+    }
+    .opt-btn:hover:not(:disabled) { background: #e2e8f0; border-color: var(--primary); }
+    .opt-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+    .opt-btn:disabled { cursor: default; opacity: 0.65; }
+    .opt-btn.correct { background: #dcfce7; border-color: var(--success); color: var(--success); font-weight: 600; }
+    .opt-btn.incorrect { background: #fee2e2; border-color: var(--error); color: var(--error); }
+    .opt-btn.selected { border-color: var(--primary); background: #eff6ff; }
+
+    /* Feedback */
+    .feedback { padding: 1rem; border-radius: 8px; margin-top: 1rem; display: none; font-size: 0.95rem; }
+    .feedback.success { background: #dcfce7; color: var(--success); border-left: 4px solid var(--success); }
+    .feedback.error { background: #fee2e2; color: var(--error); border-left: 4px solid var(--error); }
+
+    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .btn { flex: 1; min-width: 140px; padding: 0.875rem 1.25rem; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; min-height: 48px; transition: background 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .hidden { display: none; }
+
+    .tts-unavailable { background: #fef3c7; color: #92400e; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; display: none; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <main class="exercise-card" role="main">
+    <h2>Übung 3: Hörverstehen</h2>
+    <p class="intro">
+      Höre dir den kurzen Dialog an. Beantworte anschließend die Fragen per Klick. 
+      Du kannst die Aufnahme beliebig oft abspielen.
+    </p>
+
+    <div class="tts-unavailable" id="ttsFallback">
+      Dein Browser unterstützt keine Text-to-Speech-Ausgabe. Bitte nutze einen modernen Browser (Chrome, Edge, Safari, Firefox).
+    </div>
+
+    <div class="progress" aria-hidden="true">
+      <div class="progress-dot active" id="dot1"></div>
+      <div class="progress-dot" id="dot2"></div>
+    </div>
+
+    <section class="tts-player" aria-label="Text-to-Speech Player">
+      <div class="player-header">
+        <button class="tts-btn" id="ttsBtn" aria-label="Dialog abspielen"></button>
+        <div class="player-info">
+          <div class="player-title">Dialog: Маша und das Fahrrad</div>
+          <div class="player-status" id="ttsStatus">Bereit</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="dialog-preview" id="dialogPreview">
+      <div class="dialog-line"><strong>Person A:</strong> Ты знаешь, что Маша вчера сломала ногу?</div>
+      <div class="dialog-line"><strong>Person B:</strong> <span class="russian">как так</span>?</div>
+      <div class="dialog-line"><strong>Person A:</strong> Она упала с велосипеда.</div>
+    </div>
+
+    <section class="question-block" id="q1">
+      <p class="question">Frage 1: Was ist mit Маша passiert?</p>
+      <div class="options" role="group" aria-label="Antwortmöglichkeiten Frage 1">
+        <button class="opt-btn" data-q="1" data-correct="false">Sie ist krank geworden.</button>
+        <button class="opt-btn" data-q="1" data-correct="true">Sie ist vom Fahrrad gefallen.</button>
+        <button class="opt-btn" data-q="1" data-correct="false">Sie hat ihren Schlüssel verloren.</button>
+        <button class="opt-btn" data-q="1" data-correct="false">Sie hat eine Prüfung nicht bestanden.</button>
+      </div>
+    </section>
+
+    <section class="question-block" id="q2">
+      <p class="question">Frage 2: Welche Emotion drückt <span class="russian">как так</span> hier aus?</p>
+      <div class="options" role="group" aria-label="Antwortmöglichkeiten Frage 2">
+        <button class="opt-btn" data-q="2" data-correct="false">Freude</button>
+        <button class="opt-btn" data-q="2" data-correct="true">Überraschung / Interesse</button>
+        <button class="opt-btn" data-q="2" data-correct="false">Ärger</button>
+        <button class="opt-btn" data-q="2" data-correct="false">Gleichgültigkeit</button>
+      </div>
+    </section>
+
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="checkBtn">Antworten überprüfen</button>
+      <button class="btn btn-secondary" id="resetBtn">Neustart</button>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const synth = window.speechSynthesis;
+      const ttsBtn = document.getElementById('ttsBtn');
+      const ttsStatus = document.getElementById('ttsStatus');
+      const ttsFallback = document.getElementById('ttsFallback');
+      const feedback = document.getElementById('feedback');
+      const checkBtn = document.getElementById('checkBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const dot1 = document.getElementById('dot1');
+      const dot2 = document.getElementById('dot2');
+
+      // TTS-Verfügbarkeit prüfen
+      if (!synth) {
+        ttsFallback.style.display = 'block';
+        ttsBtn.disabled = true;
+        ttsBtn.setAttribute('aria-label', 'Sprachausgabe nicht verfügbar');
+      }
+
+      let utterance = null;
+      let isSpeaking = false;
+      let isPaused = false;
+
+      // Dialog-Text
+      const dialogText = "Ты знаешь, что Маша вчера сломала ногу? Как так? Она упала с велосипеда.";
+
+      // Stimmen laden (asynchron)
+      let voices = [];
+      function loadVoices() { voices = synth.getVoices(); }
+      loadVoices();
+      if (synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = loadVoices;
+      }
+
+      function getRussianVoice() {
+        return voices.find(v => v.lang.startsWith('ru')) || voices[0] || null;
+      }
+
+      function updateTTSUI() {
+        ttsBtn.classList.toggle('playing', isSpeaking && !isPaused);
+        if (isSpeaking && isPaused) {
+          ttsStatus.textContent = 'Pausiert';
+          ttsBtn.innerHTML = '▶';
+        } else if (isSpeaking) {
+          ttsStatus.textContent = 'Wird abgespielt...';
+          ttsBtn.innerHTML = '⏸';
+        } else {
+          ttsStatus.textContent = 'Bereit';
+          ttsBtn.innerHTML = '▶';
+        }
+      }
+
+      function speak() {
+        if (!synth) return;
+        synth.cancel(); // Vorherige Ausgabe stoppen
+        utterance = new SpeechSynthesisUtterance(dialogText);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.9; // Etwas langsamer für Lernende
+        const ruVoice = getRussianVoice();
+        if (ruVoice) utterance.voice = ruVoice;
+
+        utterance.onstart = () => { isSpeaking = true; isPaused = false; updateTTSUI(); };
+        utterance.onend = () => { isSpeaking = false; isPaused = false; updateTTSUI(); };
+        utterance.onerror = (e) => { 
+          console.error('TTS Error:', e); 
+          isSpeaking = false; isPaused = false; updateTTSUI(); 
+          ttsStatus.textContent = 'Fehler bei der Wiedergabe';
+        };
+
+        synth.speak(utterance);
+      }
+
+      function toggleTTS() {
+        if (!synth) return;
+        if (isSpeaking && !isPaused) {
+          synth.pause();
+          isPaused = true;
+        } else if (isPaused) {
+          synth.resume();
+          isPaused = false;
+        } else {
+          speak();
+        }
+        updateTTSUI();
+      }
+
+      ttsBtn.addEventListener('click', toggleTTS);
+
+      // --- Fragen-Logik ---
+      const optBtns = document.querySelectorAll('.opt-btn');
+      let answered = { 1: false, 2: false };
+      const questions = {
+        1: { correctAnswer: 'Sie ist vom Fahrrad gefallen.', explanation: 'Richtig! Im Dialog heißt es: „Она упала с велосипеда" – sie ist vom Fahrrad gefallen.' },
+        2: { correctAnswer: 'Überraschung / Interesse', explanation: `Richtig! <span class="russian">как так</span> drückt hier Überraschung und den Wunsch aus, mehr über die Umstände zu erfahren. Es ist eine typische Reaktion auf unerwartete Nachrichten.` }
+      };
+
+      optBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (checkBtn.disabled) return;
+          const q = btn.dataset.q;
+          const sameQuestion = document.querySelectorAll(`.opt-btn[data-q="${q}"]`);
+          sameQuestion.forEach(b => b.classList.remove('selected'));
+          
+          if (btn.classList.contains('selected')) {
+            btn.classList.remove('selected');
+            answered[q] = false;
+          } else {
+            btn.classList.add('selected');
+            answered[q] = true;
+          }
+
+          if (answered[1]) { dot1.classList.add('done'); dot1.classList.remove('active'); dot2.classList.add('active'); }
+          if (answered[2]) dot2.classList.add('done');
+        });
+      });
+
+      // Überprüfung
+      checkBtn.addEventListener('click', () => {
+        if (!answered[1] || !answered[2]) {
+          feedback.style.display = 'block';
+          feedback.className = 'feedback error';
+          feedback.textContent = 'Bitte beantworte beide Fragen, bevor du überprüfst.';
+          return;
+        }
+
+        optBtns.forEach(b => b.disabled = true);
+        checkBtn.disabled = true;
+        checkBtn.style.opacity = '0.6';
+
+        let allCorrect = true;
+        let feedbackHTML = '';
+
+        [1, 2].forEach(qNum => {
+          const selected = document.querySelector(`.opt-btn[data-q="${qNum}"].selected`);
+          const isCorrect = selected && selected.dataset.correct === 'true';
+          
+          document.querySelectorAll(`.opt-btn[data-q="${qNum}"]`).forEach(btn => {
+            if (btn.dataset.correct === 'true') btn.classList.add('correct');
+            if (btn.classList.contains('selected') && btn.dataset.correct !== 'true') btn.classList.add('incorrect');
+          });
+
+          if (!isCorrect) allCorrect = false;
+          feedbackHTML += `<p><strong>Frage ${qNum}:</strong> ${questions[qNum].explanation}</p>`;
+        });
+
+        feedback.style.display = 'block';
+        if (allCorrect) {
+          feedback.className = 'feedback success';
+          feedback.innerHTML = `<strong>Sehr gut!</strong><br>${feedbackHTML}<p style="margin-top:0.75rem">Merke: <span class="russian">как так</span> ist umgangssprachlich. In formellen Situationen oder beim Schreiben nutzt du besser <span class="russian">как это случилось</span> oder <span class="russian">как это произошло</span>.</p>`;
+        } else {
+          feedback.className = 'feedback error';
+          feedback.innerHTML = `<strong>Fast!</strong><br>${feedbackHTML}<p style="margin-top:0.75rem">Schau dir die grün markierten richtigen Antworten an und versuche es erneut.</p>`;
+        }
+      });
+
+      // Neustart
+      function resetExercise() {
+        if (synth) synth.cancel();
+        isSpeaking = false;
+        isPaused = false;
+        updateTTSUI();
+
+        optBtns.forEach(btn => {
+          btn.disabled = false;
+          btn.classList.remove('selected', 'correct', 'incorrect');
+        });
+        answered = { 1: false, 2: false };
+        feedback.style.display = 'none';
+        feedback.innerHTML = '';
+        checkBtn.disabled = false;
+        checkBtn.style.opacity = '1';
+        dot1.className = 'progress-dot active';
+        dot2.className = 'progress-dot';
+        ttsStatus.textContent = 'Bereit';
+        document.querySelector('.opt-btn[data-q="1"]').focus();
+      }
+
+      resetBtn.addEventListener('click', resetExercise);
+      updateTTSUI();
+    });
+  </script>
+</body>
+</html>
