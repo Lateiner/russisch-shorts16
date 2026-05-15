@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch Vokabeltrainer</title>
+    <style>
+        :root {
+            --bg-color: #f0fdf4;       /* Sehr helles Grün */
+            --card-bg: #ffffff;
+            --text-main: #14532d;      /* Sehr dunkles Grün */
+            --text-secondary: #4b5563;
+            --primary-btn: #15803d;    /* Mittelgrün */
+            --primary-btn-hover: #166534;
+            --secondary-btn: #86efac;  /* Helles Grün */
+            --secondary-btn-text: #14532d;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none; /* Verhindert Markieren von Text beim schnellen Klicken */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--primary-btn);
+            text-align: center;
+        }
+
+        .progress-container {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        /* Card Scene Container */
+        .card-scene {
+            width: 100%;
+            max-width: 600px;
+            height: 350px;
+            perspective: 1200px; /* 3D Tiefe */
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+        }
+
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden; /* Rückseite unsichtbar wenn gedreht */
+            -webkit-backface-visibility: hidden;
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            text-align: center;
+            border: 2px solid #bbf7d0;
+        }
+
+        /* Vorderseite */
+        .face.front {
+            z-index: 2;
+        }
+
+        .face.front .content {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+
+        .face.front .hint {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        /* Rückseite */
+        .face.back {
+            transform: rotateY(180deg);
+            background-color: #ecfdf5; /* Etwas dunkleres Hintergrundgrün für Rückseite */
+        }
+
+        .face.back .content {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-main);
+            line-height: 1.3;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 700px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        .btn-nav {
+            background-color: var(--primary-btn);
+            color: white;
+        }
+
+        .btn-nav:hover {
+            background-color: var(--primary-btn-hover);
+        }
+
+        .btn-action {
+            background-color: var(--secondary-btn);
+            color: var(--secondary-btn-text);
+        }
+
+        .btn-action:hover {
+            background-color: #4ade80;
+        }
+        
+        /* Responsives Design */
+        @media (max-width: 640px) {
+            h1 { font-size: 1.5rem; }
+            .card-scene { height: 300px; }
+            .face.front .content { font-size: 2rem; }
+            .face.back .content { font-size: 1.4rem; }
+            button { padding: 10px 16px; font-size: 0.9rem; flex: 1 1 auto; }
+        }
+
+        @media (max-width: 380px) {
+            .face.front .content { font-size: 1.6rem; }
+            .face.back .content { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Russisch Vokabeltrainer</h1>
+    
+    <div class="progress-container">
+        <span id="current-count">1</span> / <span id="total-count">60</span>
+    </div>
+
+    <div class="card-scene" id="card-scene">
+        <div class="card" id="card">
+            <div class="face front">
+                <div class="content" id="front-content">Loading...</div>
+                <div class="hint">Tippe zum Umdrehen</div>
+            </div>
+            <div class="face back">
+                <div class="content" id="back-content">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-action" id="btn-reset" title="An den Anfang (Home)">↺ An den Anfang</button>
+        <button class="btn-nav" id="btn-prev" title="Vorherige (Pfeil links)">← Zurück</button>
+        <button class="btn-nav" id="btn-flip" title="Umdrehen (Leertaste/Enter)">Umdrehen</button>
+        <button class="btn-nav" id="btn-next" title="Nächste (Pfeil rechts)">Weiter →</button>
+        <button class="btn-action" id="btn-shuffle" title="Mischen">🎲 Mischen</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // VOKABELDATEN (60 Einträge)
+        // Format: { front: "Russisch", back: "Deutsch" }
+        // ==========================================
+        const vocabularyList = [
+            { front: "как так", back: "wie kommt das denn? (umgangssprachlich)" },
+            { front: "как э́то случи́лось", back: "wie ist das passiert? (formell)" },
+            { front: "как э́то произошло́", back: "wie ist das geschehen? (formell, schriftlich)" },
+            { front: "приве́т", back: "hallo, grüß dich" },
+            { front: "ты зна́ешь", back: "weißt du" },
+            { front: "вчера́", back: "gestern" },
+            { front: "нога́", back: "das Bein, der Fuß" },
+            { front: "слома́ть / лома́ть", back: "sich (etwas) brechen / brechen" },
+            { front: "упа́сть / па́дать", back: "fallen / hinfallen" },
+            { front: "велосипе́д", back: "das Fahrrad" },
+            { front: "с велосипе́да", back: "vom Fahrrad" },
+            { front: "врач", back: "der Arzt, die Ärztin" },
+            { front: "бедна́я Ма́ша", back: "arme Mascha" },
+            { front: "Ма́ша", back: "Mascha (Eigenname)" },
+            { front: "друг", back: "der Freund" },
+            { front: "учи́тель", back: "der Lehrer, die Lehrerin" },
+            { front: "сообще́ние", back: "die Nachricht, die Mitteilung" },
+            { front: "чат", back: "der Chat" },
+            { front: "социа́льная сеть", back: "das soziale Netzwerk" },
+            { front: "официа́льный", back: "offiziell, formell" },
+            { front: "неформа́льный", back: "inoffiziell, informell" },
+            { front: "разгово́рный", back: "umgangssprachlich" },
+            { front: "удивле́ние", back: "die Überraschung, das Erstaunen" },
+            { front: "интере́с", back: "das Interesse" },
+            { front: "сочу́вствие", back: "das Mitgefühl, die Anteilnahme" },
+            { front: "ситуа́ция", back: "die Situation" },
+            { front: "конте́кст", back: "der Kontext" },
+            { front: "реа́кция", back: "die Reaktion" },
+            { front: "зна́ть / узна́ть", back: "wissen / erfahren, kennenlernen" },
+            { front: "слы́шать / услы́шать", back: "hören / hören, vernehmen" },
+            { front: "говори́ть / сказа́ть", back: "sprechen / sagen" },
+            { front: "спра́шивать / спроси́ть", back: "fragen / fragen" },
+            { front: "отвеча́ть / отве́тить", back: "antworten / antworten" },
+            { front: "поправля́ться / попра́виться", back: "sich erholen / gesund werden" },
+            { front: "писа́ть / написа́ть", back: "schreiben / schreiben, verfassen" },
+            { front: "чита́ть / прочита́ть", back: "lesen / durchlesen" },
+            { front: "звони́ть / позвони́ть", back: "anrufen / anrufen" },
+            { front: "объясня́ть / объясни́ть", back: "erklären / erklären" },
+            { front: "происходи́ть / произойти́", back: "geschehen / sich ereignen" },
+            { front: "случа́ться / случи́ться", back: "passieren / sich ereignen" },
+            { front: "вчерашний", back: "gestrig, von gestern" },
+            { front: "бы́стрый", back: "schnell, rasch" },
+            { front: "хорошо́", back: "gut, in Ordnung" },
+            { front: "плохо́", back: "schlecht, schlimm" },
+            { front: "коне́чно", back: "natürlich, selbstverständlich" },
+            { front: "к сожале́нию", back: "leider, bedauerlicherweise" },
+            { front: "наде́яться / понаде́яться", back: "hoffen / hoffen" },
+            { front: "жела́ть / пожела́ть", back: "wünschen / wünschen" },
+            { front: "помога́ть / помо́чь", back: "helfen / helfen" },
+            { front: "понима́ть / поня́ть", back: "verstehen / verstehen" },
+            { front: "ду́мать / поду́мать", back: "denken / nachdenken" },
+            { front: "смотре́ть / посмотре́ть", back: "schauen / anschauen, blicken" },
+            { front: "идти́ / пойти́", back: "gehen / losgehen, sich aufmachen" },
+            { front: "приходи́ть / прийти́", back: "kommen / ankommen, eintreffen" },
+            { front: "возвраща́ться / верну́ться", back: "zurückkehren / zurückkehren" },
+            { front: "остава́ться / оста́ться", back: "bleiben / bleiben, verweilen" },
+            { front: "нача́ть / начина́ть", back: "beginnen / anfangen" },
+            { front: "ко́нчить / зака́нчивать", back: "beenden / abschließen" },
+            { front: "рассказа́ть / расска́зывать", back: "erzählen / erzählen" },
+            { front: "узнать / узнава́ть", back: "in Erfahrung bringen / herausfinden" }
+        ];
+
+        // ==========================================
+        // STATE MANAGEMENT
+        // ==========================================
+        let currentDeck = [...vocabularyList]; // Kopie der Liste
+        let currentIndex = 0;
+        let isFlipped = false;
+
+        // ==========================================
+        // DOM ELEMENTS
+        // ==========================================
+        const cardScene = document.getElementById('card-scene');
+        const card = document.getElementById('card');
+        const frontContent = document.getElementById('front-content');
+        const backContent = document.getElementById('back-content');
+        const currentCountEl = document.getElementById('current-count');
+        const totalCountEl = document.getElementById('total-count');
+        
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnFlip = document.getElementById('btn-flip');
+        const btnShuffle = document.getElementById('btn-shuffle');
+        const btnReset = document.getElementById('btn-reset');
+
+        // ==========================================
+        // FUNKTIONEN
+        // ==========================================
+
+        // Aktualisiert die Anzeige der aktuellen Karte
+        function renderCard() {
+            // Sicherstellen, dass die Karte immer zuerst auf der Vorderseite ist
+            if (isFlipped) {
+                isFlipped = false;
+                card.classList.remove('is-flipped');
+                // Kurze Verzögerung beim Wechseln der Karte, damit der Flip nicht glitcht
+                setTimeout(updateContent, 300); 
+            } else {
+                updateContent();
+            }
+            updateProgress();
+        }
+
+        // Setzt den Textinhalt und passt die Schriftgröße an
+        function updateContent() {
+            const item = currentDeck[currentIndex];
+            frontContent.textContent = item.front;
+            backContent.textContent = item.back;
+            
+            // Dynamische Schriftgrößenanpassung für sehr lange Texte
+            adjustFontSize(frontContent);
+            adjustFontSize(backContent);
+        }
+
+        // Hilfsmethode zur Schriftgrößenanpassung
+        function adjustFontSize(element) {
+            const length = element.textContent.length;
+            // Standard-Größen sind im CSS definiert, hier reduzieren wir bei Bedarf
+            if (length > 30) {
+                element.style.fontSize = "1.6rem";
+            } else if (length > 50) {
+                element.style.fontSize = "1.3rem";
+            } else {
+                element.style.fontSize = ""; // Reset auf CSS Standard
+            }
+        }
+
+        // Aktualisiert den Zähler "X / Y"
+        function updateProgress() {
+            currentCountEl.textContent = currentIndex + 1;
+            totalCountEl.textContent = currentDeck.length;
+            
+            // Buttons deaktivieren am Anfang/Ende
+            btnPrev.disabled = (currentIndex === 0);
+            btnNext.disabled = (currentIndex === currentDeck.length - 1);
+        }
+
+        // Karte umdrehen
+        function toggleFlip() {
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                card.classList.add('is-flipped');
+            } else {
+                card.classList.remove('is-flipped');
+            }
+        }
+
+        // Nächste Karte
+        function nextCard() {
+            if (currentIndex < currentDeck.length - 1) {
+                currentIndex++;
+                renderCard();
+            }
+        }
+
+        // Vorherige Karte
+        function prevCard() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                renderCard();
+            }
+        }
+
+        // An den Anfang (Reset)
+        function resetToStart() {
+            // Nicht mischen, nur Index zurücksetzen
+            // Falls gewünscht, hier auch currentDeck = [...vocabularyList] um Sortierung wiederherzustellen
+            // Derzeit lassen wir die gemischte Reihenfolge bestehen, gehen nur an den Anfang.
+            currentIndex = 0;
+            renderCard();
+        }
+
+        // Mischen (Fisher-Yates Shuffle)
+        function shuffleDeck() {
+            for (let i = currentDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [currentDeck[i], currentDeck[j]] = [currentDeck[j], currentDeck[i]];
+            }
+            currentIndex = 0;
+            renderCard();
+        }
+
+        // ==========================================
+        // EVENT LISTENERS
+        // ==========================================
+
+        // Karten-Klick (Maus/Touch)
+        cardScene.addEventListener('click', (e) => {
+            toggleFlip();
+        });
+
+        // Button-Klicks
+        btnFlip.addEventListener('click', (e) => {
+            e.stopPropagation(); // Verhindert Auslösen des Card-Clicks
+            toggleFlip();
+        });
+        btnNext.addEventListener('click', nextCard);
+        btnPrev.addEventListener('click', prevCard);
+        btnShuffle.addEventListener('click', shuffleDeck);
+        btnReset.addEventListener('click', resetToStart);
+
+        // Tastatur-Steuerung
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'Space':
+                case 'Enter':
+                    e.preventDefault(); // Verhindert Scrollen bei Space
+                    toggleFlip();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    nextCard();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    prevCard();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    resetToStart();
+                    break;
+            }
+        });
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        // Startwert setzen
+        totalCountEl.textContent = currentDeck.length;
+        renderCard();
+
+    </script>
+</body>
+</html>
