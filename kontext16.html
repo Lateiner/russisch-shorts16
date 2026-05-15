@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aufgabe 6</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
+.card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+h2 { color: #1e293b; margin-bottom: 10px; }
+.russian { font-weight: bold; color: #2563eb; }
+.scenario { background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 5px solid #2563eb; }
+.buttons { display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
+button { padding: 15px 25px; font-size: 16px; border: 2px solid; border-radius: 8px; cursor: pointer; flex: 1; min-width: 150px; font-weight: bold; }
+.yes { background: #dcfce7; border-color: #15803d; color: #15803d; }
+.no { background: #fee2e2; border-color: #b91c1c; color: #b91c1c; }
+button:hover { opacity: 0.9; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.feedback { padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
+.correct { background: #dcfce7; color: #15803d; display: block !important; }
+.incorrect { background: #fee2e2; color: #b91c1c; display: block !important; }
+.next-btn { background: #2563eb; color: white; border-color: #2563eb; margin-top: 15px; }
+.reset-btn { background: #e2e8f0; color: #0f172a; border-color: #cbd5e1; width: 100%; margin-top: 20px; }
+.hidden { display: none; }
+.progress { text-align: center; margin-bottom: 20px; }
+.dot { display: inline-block; width: 30px; height: 30px; border-radius: 50%; background: #cbd5e1; margin: 0 5px; line-height: 30px; font-weight: bold; }
+.dot.active { background: #2563eb; color: white; }
+.dot.done { background: #15803d; color: white; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Aufgabe 6: Kontext-Check</h2>
+  <p>Ist <span class="russian">как так</span> in dieser Situation angemessen?</p>
+  
+  <div class="progress" id="progress"></div>
+  <div id="content"></div>
+  <button class="reset-btn" onclick="reset()">↻ Neustart</button>
+</div>
+
+<script>
+const scenarios = [
+  {
+    context: "💬 Chat mit Freund",
+    text: "Freund: «Маша сломала ногу.»<br>Du: „<span class='russian'>как так</span>?",
+    correct: "yes",
+    info: "Richtig! Im Chat mit Freunden ist как так perfekt."
+  },
+  {
+    context: "📧 E-Mail an Lehrer",
+    text: "Formelle Nachfrage: „<span class='russian'>как это случилось</span>?",
+    correct: "no",
+    info: "Genau! Hier besser как это случилось verwenden."
+  },
+  {
+    context: "📱 Social Media",
+    text: "Kommentar: «Упал 😅»<br>Deine Antwort: „<span class='russian'>как так</span>?",
+    correct: "yes",
+    info: "Korrekt! In sozialen Medien passt как так."
+  }
+];
+
+let current = 0;
+let score = 0;
+
+function showProgress() {
+  let html = '';
+  for(let i=0; i<scenarios.length; i++) {
+    let cls = i < current ? 'done' : (i === current ? 'active' : '');
+    html += '<span class="dot '+cls+'">'+(i+1)+'</span>';
+  }
+  document.getElementById('progress').innerHTML = html;
+}
+
+function showScenario() {
+  if(current >= scenarios.length) {
+    document.getElementById('content').innerHTML = 
+      '<h3>✅ Fertig!</h3><p>Du hast '+score+' von '+scenarios.length+' richtig.</p>'+
+      '<p><strong>Merke:</strong><br>• как так = umgangssprachlich<br>• как это случилось = formell</p>';
+    document.getElementById('progress').innerHTML = '';
+    return;
+  }
+  
+  let s = scenarios[current];
+  document.getElementById('content').innerHTML = 
+    '<div class="scenario">'+
+      '<h3>'+s.context+'</h3>'+
+      '<p>'+s.text+'</p>'+
+      '<div class="buttons">'+
+        '<button class="yes" onclick="answer(\'yes\')">✓ Ja</button>'+
+        '<button class="no" onclick="answer(\'no\')">✗ Nein</button>'+
+      '</div>'+
+      '<div id="fb" class="feedback"></div>'+
+      '<button id="next" class="next-btn hidden" onclick="next()">Weiter →</button>'+
+    '</div>';
+  
+  showProgress();
+}
+
+function answer(userAns) {
+  let s = scenarios[current];
+  let ok = userAns === s.correct;
+  if(ok) score++;
+  
+  document.querySelectorAll('.buttons button').forEach(b => b.disabled = true);
+  
+  let fb = document.getElementById('fb');
+  fb.className = 'feedback ' + (ok ? 'correct' : 'incorrect');
+  fb.innerHTML = '<strong>'+(ok ? '✓ Richtig!' : '✗ Nicht ganz')+'</strong><br>'+s.info;
+  
+  document.getElementById('next').classList.remove('hidden');
+}
+
+function next() {
+  current++;
+  showScenario();
+}
+
+function reset() {
+  current = 0;
+  score = 0;
+  showScenario();
+}
+
+// Start
+showScenario();
+</script>
+</body>
+</html>
