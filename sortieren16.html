@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aufgabe 10: Formal vs. Informell</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;padding:1rem;min-height:100vh}
+.container{max-width:800px;margin:0 auto;background:white;border-radius:12px;padding:1.5rem;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+h2{text-align:center;margin-bottom:0.5rem;color:#1e293b}
+.intro{text-align:center;color:#64748b;margin-bottom:1.5rem;font-size:0.95rem}
+.progress{height:6px;background:#e2e8f0;border-radius:3px;margin-bottom:1.5rem;overflow:hidden}
+.progress-fill{height:100%;background:#2563eb;width:0%;transition:width 0.3s}
+
+.phrase-pool{background:#f8fafc;border:2px solid #e2e8f0;border-radius:8px;padding:1rem;margin-bottom:1.5rem;min-height:60px}
+.phrase-pool h3{font-size:0.9rem;color:#64748b;margin-bottom:0.5rem}
+.phrases{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
+
+.phrase{background:white;border:2px solid #cbd5e1;border-radius:8px;padding:0.75rem 1rem;cursor:pointer;font-size:1rem;transition:all 0.2s;user-select:none;min-height:48px;display:flex;align-items:center}
+.phrase:hover{border-color:#2563eb;background:#eff6ff}
+.phrase.selected{border-color:#2563eb;background:#dbeafe;box-shadow:0 0 0 3px rgba(37,99,235,0.2)}
+.phrase.done{opacity:0.4;pointer-events:none}
+.phrase .ru{font-weight:700;color:#2563eb;margin-right:0.5rem}
+
+.zones{display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1.5rem}
+@media(min-width:640px){.zones{grid-template-columns:1fr 1fr}}
+
+.zone{border:3px dashed #cbd5e1;border-radius:12px;padding:1.5rem;min-height:200px;transition:all 0.2s}
+.zone.active{border-color:#2563eb;background:#eff6ff}
+.zone h3{text-align:center;margin-bottom:1rem;padding:0.5rem;border-radius:6px;font-size:1.1rem}
+.zone-informal h3{background:#fef3c7;color:#92400e}
+.zone-formal h3{background:#dbeafe;color:#1e40af}
+
+.zone-items{display:flex;flex-direction:column;gap:0.5rem;min-height:120px}
+.zone-item{background:white;border:2px solid;border-radius:8px;padding:0.75rem;cursor:move;transition:all 0.2s;min-height:48px;display:flex;align-items:center;justify-content:space-between}
+.zone-item.informal{border-color:#f59e0b;background:#fffbeb}
+.zone-item.formal{border-color:#3b82f6;background:#eff6ff}
+.zone-item.correct{border-color:#15803d;background:#dcfce7}
+.zone-item.wrong{border-color:#b91c1c;background:#fee2e2}
+.zone-item .ru{font-weight:700}
+.remove-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;color:#64748b;padding:0 0.5rem}
+.remove-btn:hover{color:#b91c1c}
+
+.feedback{padding:1rem;border-radius:8px;margin:1rem 0;display:none;border-left:4px solid}
+.feedback.show{display:block;animation:fadeIn 0.3s}
+.feedback.correct{background:#dcfce7;color:#15803d;border-color:#15803d}
+.feedback.wrong{background:#fee2e2;color:#b91c1c;border-color:#b91c1c}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+.btn{width:100%;padding:1rem;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;margin-top:0.5rem;min-height:48px}
+.btn-check{background:#2563eb;color:white;display:none}
+.btn-check:hover{background:#1d4ed8}
+.btn-reset{background:#e2e8f0;color:#0f172a}
+.btn-reset:hover{background:#cbd5e1}
+
+@media(max-width:480px){.container{padding:1rem}.phrase{font-size:0.9rem;padding:0.5rem}.zone{padding:1rem}}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Aufgabe 10: Formal vs. Informell</h2>
+<p class="intro">Ordne die russischen Ausdrücke den passenden Kategorien zu.</p>
+<div class="progress"><div class="progress-fill" id="prog"></div></div>
+
+<div class="phrase-pool">
+<h3>Verfügbare Ausdrücke (anklicken):</h3>
+<div class="phrases" id="pool"></div>
+</div>
+
+<div class="zones">
+<div class="zone zone-informal" id="zoneInformal" onclick="placeTo('informal')">
+<h3>💬 Umgangssprachlich</h3>
+<div class="zone-items" id="itemsInformal"></div>
+</div>
+<div class="zone zone-formal" id="zoneFormal" onclick="placeTo('formal')">
+<h3>📄 Formell</h3>
+<div class="zone-items" id="itemsFormal"></div>
+</div>
+</div>
+
+<div id="feedback" class="feedback"></div>
+<button id="checkBtn" class="btn btn-check" onclick="checkAll()">✓ Alle überprüfen</button>
+<button class="btn btn-reset" onclick="reset()">↻ Neustart</button>
+</div>
+
+<script>
+var phrases=[
+{t:"как так",c:"informal",desc:"Umgangssprachliche Überraschungsreaktion"},
+{t:"как это случилось",c:"formal",desc:"Neutrale/formelle Nachfrage"},
+{t:"как это произошло",c:"formal",desc:"Formell, für Berichte geeignet"},
+{t:"ну и как?",c:"informal",desc:"Lockere Nachfrage unter Freunden"},
+{t:"не могли бы вы объяснить",c:"formal",desc:"Höfliche, formelle Bitte"},
+{t:"чё случилось?",c:"informal",desc:"Sehr umgangssprachlich (Slang)"}
+];
+
+var placed=[];
+var pool=document.getElementById('pool');
+var itemsInformal=document.getElementById('itemsInformal');
+var itemsFormal=document.getElementById('itemsFormal');
+var feedback=document.getElementById('feedback');
+var checkBtn=document.getElementById('checkBtn');
+var prog=document.getElementById('prog');
+
+function init(){
+pool.innerHTML='';
+itemsInformal.innerHTML='';
+itemsFormal.innerHTML='';
+placed=[];
+feedback.className='feedback';
+feedback.style.display='none';
+checkBtn.style.display='none';
+prog.style.width='0%';
+
+phrases.forEach(function(p,idx){
+var btn=document.createElement('div');
+btn.className='phrase';
+btn.innerHTML='<span class="ru">'+p.t+'</span>';
+btn.onclick=function(){selectPhrase(idx,btn);};
+btn.id='phrase-'+idx;
+pool.appendChild(btn);
+});
+}
+
+function selectPhrase(idx,btn){
+if(placed.indexOf(idx)!==-1)return;
+document.querySelectorAll('.phrase').forEach(function(b){b.classList.remove('selected');});
+btn.classList.add('selected');
+}
+
+function placeTo(category){
+var selected=document.querySelector('.phrase.selected');
+if(!selected)return;
+
+var idx=parseInt(selected.id.split('-')[1]);
+var phrase=phrases[idx];
+
+placed.push(idx);
+selected.classList.add('done');
+
+var item=document.createElement('div');
+item.className='zone-item '+category;
+item.innerHTML='<span><span class="ru">'+phrase.t+'</span><br><small style="color:#64748b">'+phrase.desc+'</small></span><button class="remove-btn" onclick="removeItem('+idx+',\''+category+'\')">×</button>';
+item.id='item-'+idx;
+
+if(category==='informal')itemsInformal.appendChild(item);
+else itemsFormal.appendChild(item);
+
+document.querySelectorAll('.phrase').forEach(function(b){b.classList.remove('selected');});
+
+var total=phrases.length;
+prog.style.width=(placed.length/total*100)+'%';
+
+if(placed.length===total)checkBtn.style.display='block';
+}
+
+function removeItem(idx,category){
+var item=document.getElementById('item-'+idx);
+if(item)item.remove();
+
+var pos=placed.indexOf(idx);
+if(pos!==-1)placed.splice(pos,1);
+
+var phrase=document.getElementById('phrase-'+idx);
+if(phrase)phrase.classList.remove('done');
+
+prog.style.width=(placed.length/phrases.length*100)+'%';
+checkBtn.style.display='none';
+feedback.className='feedback';
+feedback.style.display='none';
+}
+
+function checkAll(){
+var correct=0;
+var wrong=0;
+
+phrases.forEach(function(p,idx){
+var item=document.getElementById('item-'+idx);
+if(!item)return;
+
+var currentCat=item.classList.contains('informal')?'informal':'formal';
+item.classList.remove('correct','wrong');
+
+if(currentCat===p.c){
+item.classList.add('correct');
+correct++;
+}else{
+item.classList.add('wrong');
+wrong++;
+}
+});
+
+feedback.className='feedback show '+(wrong===0?'correct':'wrong');
+if(wrong===0){
+feedback.innerHTML='<strong>✅ Perfekt!</strong><br>Alle '+correct+' Ausdrücke sind richtig zugeordnet. Du beherrschst den Unterschied zwischen formell und umgangssprachlich!';
+}else{
+feedback.innerHTML='<strong>⚠️ '+wrong+' falsch</strong><br>'+correct+' von '+phrases.length+' richtig. Die rot markierten Karten sind falsch platziert. Klicke auf × um sie zurückzunehmen und neu zu sortieren.';
+}
+
+prog.style.width='100%';
+}
+
+function reset(){
+init();
+}
+
+window.onload=init;
+</script>
+</body>
+</html>
