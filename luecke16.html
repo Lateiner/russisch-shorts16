@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Übung 5: Lückentext mit Wortbank</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #15803d;
+      --error: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #cbd5e1;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      --blank-bg: #f1f5f9;
+      --blank-border: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
+    }
+
+    .exercise-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(1rem, 4vw, 2rem);
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h2 { font-size: clamp(1.25rem, 4vw, 1.75rem); margin-bottom: 0.5rem; }
+    .intro { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .instruction { 
+      background: #f1f5f9; 
+      padding: 0.75rem 1rem; 
+      border-radius: 8px; 
+      margin-bottom: 1.25rem; 
+      font-size: 0.9rem; 
+    }
+
+    /* Lückentext */
+    .cloze-text {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: clamp(1rem, 3vw, 1.5rem);
+      margin-bottom: 1.5rem;
+      line-height: 1.8;
+      font-size: clamp(1rem, 3.5vw, 1.1rem);
+    }
+
+    .cloze-text .russian { font-weight: 600; } /* Explizit keine Kursivschrift */
+
+    .blank {
+      display: inline-block;
+      min-width: clamp(120px, 30vw, 180px);
+      min-height: 44px;
+      padding: 0.4rem 0.75rem;
+      margin: 0 0.25rem;
+      background: var(--blank-bg);
+      border: 2px dashed var(--blank-border);
+      border-radius: 8px;
+      text-align: center;
+      vertical-align: middle;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .blank:hover { border-color: var(--primary); background: #eff6ff; }
+    .blank.selected { border-color: var(--primary); background: #dbeafe; box-shadow: 0 0 0 3px rgb(37 99 235 / 0.2); }
+    .blank.filled { border-style: solid; border-color: var(--success); background: #dcfce7; color: var(--success); }
+    .blank.incorrect { border-color: var(--error); background: #fee2e2; color: var(--error); }
+    .blank:empty::after { content: "Lücke"; color: var(--text-muted); font-weight: 400; font-size: 0.9rem; }
+
+    /* Wortbank */
+    .word-bank {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .word-bank-title {
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .word-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .word-chip {
+      background: #e2e8f0;
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      font-size: clamp(0.9rem, 3vw, 1rem);
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .word-chip:hover:not(:disabled) { background: #cbd5e1; border-color: var(--primary); }
+    .word-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+    .word-chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
+    .word-chip.used { opacity: 0.4; cursor: not-allowed; }
+    .word-chip .russian { font-weight: 600; }
+
+    /* Controls */
+    .controls { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .btn {
+      flex: 1; min-width: 140px; padding: 0.875rem 1.25rem; border: none;
+      border-radius: 8px; font-size: 1rem; cursor: pointer; min-height: 48px;
+      transition: background 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Feedback */
+    .feedback {
+      padding: 1rem; border-radius: 8px; margin-top: 1rem; display: none; font-size: 0.95rem;
+    }
+    .feedback.success { background: #dcfce7; color: var(--success); border-left: 4px solid var(--success); }
+    .feedback.error { background: #fee2e2; color: var(--error); border-left: 4px solid var(--error); }
+
+    /* Responsive Anpassungen */
+    @media (min-width: 768px) {
+      .word-list { gap: 0.75rem; }
+      .cloze-text { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="exercise-card" role="main">
+    <h2>Aufgabe 5: Lückentext mit Wortbank</h2>
+    <p class="intro">
+      Ergänze die Lücken im Dialog mit den passenden russischen Ausdrücken aus der Wortbank.
+    </p>
+    <p class="instruction">
+      💡 <strong>So geht's:</strong> 1. Tippe auf eine Lücke. 2. Wähle ein Wort aus der Bank. 3. Wiederhole bis alle Lücken gefüllt sind.
+    </p>
+
+    <!-- Lückentext -->
+    <section class="cloze-text" aria-label="Lückentext">
+      <p>
+        <strong>Person A:</strong> Ты знаешь, что Маша вчера сломала ногу?<br>
+        <strong>Person B:</strong> <span class="blank" data-blank="1"></span>?<br>
+        <strong>Person A:</strong> Она упала с велосипеда.<br>
+        <strong>Person B:</strong> Бедная! А врач сказал, <span class="blank" data-blank="2"></span>?<br>
+        <strong>Person A:</strong> Да, всё будет хорошо. В формальном Bericht würde man statt <span class="russian">как так</span> eher <span class="blank" data-blank="3"></span> schreiben.
+      </p>
+    </section>
+
+    <!-- Wortbank -->
+    <section class="word-bank" aria-label="Wortbank">
+      <div class="word-bank-title">Verfügbare Ausdrücke:</div>
+      <div class="word-list" role="group" aria-label="Auswählbare Wörter">
+        <button class="word-chip" data-word="как так"><span class="russian">как так</span></button>
+        <button class="word-chip" data-word="как это случилось"><span class="russian">как это случилось</span></button>
+        <button class="word-chip" data-word="как это произошло"><span class="russian">как это произошло</span></button>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn btn-primary" id="checkBtn">Überprüfen</button>
+      <button class="btn btn-secondary" id="resetBtn">Neustart</button>
+    </div>
+
+    <!-- Feedback -->
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const blanks = document.querySelectorAll('.blank');
+      const wordChips = document.querySelectorAll('.word-chip');
+      const checkBtn = document.getElementById('checkBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const feedback = document.getElementById('feedback');
+
+      // Korrekte Lösungen
+      const solutions = {
+        '1': 'как так',
+        '2': 'как это произошло',
+        '3': 'как это случилось'
+      };
+
+      let selectedBlank = null;
+      let selectedWord = null;
+      let filledBlanks = {}; // Speichert Zuordnungen: blankId -> word
+
+      // Wortbank-Klicks
+      wordChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          if (chip.disabled) return;
+          
+          // Auswahl umschalten
+          if (selectedWord === chip) {
+            chip.classList.remove('selected');
+            selectedWord = null;
+          } else {
+            wordChips.forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+            selectedWord = chip;
+            
+            // Wenn Lücke ausgewählt ist: Wort einsetzen
+            if (selectedBlank) {
+              placeWord(selectedBlank.dataset.blank, chip.dataset.word);
+            }
+          }
+        });
+      });
+
+      // Lücken-Klicks
+      blanks.forEach(blank => {
+        blank.addEventListener('click', () => {
+          // Wenn Lücke schon gefüllt ist: zurück zur Wortbank
+          if (blank.classList.contains('filled')) {
+            const word = blank.dataset.word;
+            blank.textContent = '';
+            blank.classList.remove('filled', 'incorrect', 'selected');
+            delete blank.dataset.word;
+            delete filledBlanks[blank.dataset.blank];
+            
+            // Wortchip wieder aktivieren
+            const chip = document.querySelector(`.word-chip[data-word="${word}"]`);
+            if (chip) {
+              chip.disabled = false;
+              chip.classList.remove('used');
+            }
+            return;
+          }
+          
+          // Neue Lücke auswählen
+          blanks.forEach(b => b.classList.remove('selected'));
+          blank.classList.add('selected');
+          selectedBlank = blank;
+          
+          // Wenn Wort bereits ausgewählt: direkt einsetzen
+          if (selectedWord) {
+            placeWord(blank.dataset.blank, selectedWord.dataset.word);
+          }
+        });
+      });
+
+      // Wort in Lücke platzieren
+      function placeWord(blankId, word) {
+        const blank = document.querySelector(`.blank[data-blank="${blankId}"]`);
+        if (!blank) return;
+        
+        // Vorheriges Wort zurückgeben (falls vorhanden)
+        if (blank.dataset.word) {
+          const oldChip = document.querySelector(`.word-chip[data-word="${blank.dataset.word}"]`);
+          if (oldChip) {
+            oldChip.disabled = false;
+            oldChip.classList.remove('used');
+          }
+        }
+        
+        // Neues Wort einsetzen
+        blank.textContent = word;
+        blank.dataset.word = word;
+        blank.classList.add('filled', 'selected');
+        blanks.forEach(b => { if (b !== blank) b.classList.remove('selected'); });
+        selectedBlank = blank;
+        filledBlanks[blankId] = word;
+        
+        // Wortchip deaktivieren
+        const chip = document.querySelector(`.word-chip[data-word="${word}"]`);
+        if (chip) {
+          chip.disabled = true;
+          chip.classList.add('used');
+          chip.classList.remove('selected');
+          selectedWord = null;
+        }
+      }
+
+      // Überprüfung
+      checkBtn.addEventListener('click', () => {
+        // Prüfen, ob alle Lücken gefüllt sind
+        const allFilled = blanks.length === Object.keys(filledBlanks).length;
+        if (!allFilled) {
+          feedback.style.display = 'block';
+          feedback.className = 'feedback error';
+          feedback.textContent = 'Bitte fülle alle Lücken, bevor du überprüfst.';
+          return;
+        }
+
+        // Visuelles Feedback pro Lücke
+        let allCorrect = true;
+        blanks.forEach(blank => {
+          blank.classList.remove('incorrect');
+          const blankId = blank.dataset.blank;
+          const userAnswer = blank.dataset.word;
+          const correctAnswer = solutions[blankId];
+          
+          if (userAnswer === correctAnswer) {
+            blank.classList.add('correct');
+          } else {
+            blank.classList.add('incorrect');
+            allCorrect = false;
+          }
+        });
+
+        // Gesamt-Feedback
+        feedback.style.display = 'block';
+        if (allCorrect) {
+          feedback.className = 'feedback success';
+          feedback.innerHTML = `
+            <strong>Perfekt!</strong><br>
+            Du hast den Unterschied zwischen umgangssprachlich und formell richtig erkannt:<br>
+            • <span class="russian">как так</span> ist eine lockere, überraschte Reaktion im Gespräch.<br>
+            • <span class="russian">как это случилось</span> und <span class="russian">как это произошло</span> sind neutral/formell und eignen sich für schriftliche oder offizielle Situationen.
+          `;
+        } else {
+          feedback.className = 'feedback error';
+          feedback.innerHTML = `
+            <strong>Fast!</strong><br>
+            Die rot markierten Lücken sind noch nicht korrekt. Denk daran:<br>
+            • <span class="russian">как так</span> → informell, emotional, im Gespräch<br>
+            • <span class="russian">как это случилось / произошло</span> → neutral/formell, auch schriftlich<br>
+            Tippe auf eine falsche Lücke, um sie zu leeren und neu zu wählen.
+          `;
+        }
+        checkBtn.focus();
+      });
+
+      // Neustart
+      resetBtn.addEventListener('click', () => {
+        // Lücken zurücksetzen
+        blanks.forEach(blank => {
+          blank.textContent = '';
+          blank.className = 'blank';
+          blank.dataset.word = '';
+        });
+        
+        // Wortbank zurücksetzen
+        wordChips.forEach(chip => {
+          chip.disabled = false;
+          chip.classList.remove('selected', 'used');
+        });
+        
+        // Status zurücksetzen
+        selectedBlank = null;
+        selectedWord = null;
+        filledBlanks = {};
+        feedback.style.display = 'none';
+        feedback.innerHTML = '';
+        
+        // Fokus setzen
+        document.querySelector('.blank[data-blank="1"]').focus();
+      });
+
+      // Tastatur-Navigation für Barrierefreiheit
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          // Auswahl aufheben
+          if (selectedWord) {
+            selectedWord.classList.remove('selected');
+            selectedWord = null;
+          }
+          if (selectedBlank) {
+            selectedBlank.classList.remove('selected');
+            selectedBlank = null;
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
