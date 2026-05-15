@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aufgabe 7: Lernkarten</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8fafc;
+      padding: 1.5rem;
+    }
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; margin-bottom: 0.5rem; }
+    .intro { text-align: center; color: #64748b; margin-bottom: 1.5rem; }
+    
+    .flashcard-wrapper {
+      perspective: 1200px;
+      height: 280px;
+      margin-bottom: 1.5rem;
+    }
+    .flashcard {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      cursor: pointer;
+    }
+    .flashcard.flipped { transform: rotateY(180deg); }
+    
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      border: 2px solid #cbd5e1;
+    }
+    .card-front { background: #eff6ff; }
+    .card-back { 
+      background: #f0fdf4; 
+      transform: rotateY(180deg);
+    }
+    .card-face p {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .russian {
+      font-weight: 700;
+      color: #15803d;
+      font-size: 1.3em;
+    }
+    .hint {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: auto;
+    }
+    
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      border: 2px solid #cbd5e1;
+      border-radius: 8px;
+      background: white;
+      font-size: 1rem;
+      cursor: pointer;
+      min-height: 48px;
+    }
+    button:hover:not(:disabled) {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .dots { display: flex; gap: 0.5rem; }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #cbd5e1;
+    }
+    .dot.active { background: #2563eb; }
+    
+    .reset-btn {
+      width: 100%;
+      padding: 0.875rem;
+      border: none;
+      border-radius: 8px;
+      background: #e2e8f0;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .reset-btn:hover { background: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Aufgabe 7: Lernkarten</h2>
+    <p class="intro">Tippe auf die Karte, um sie zu drehen.</p>
+    
+    <div class="flashcard-wrapper">
+      <div class="flashcard" id="flashcard">
+        <div class="card-face card-front">
+          <p id="front-text">Lade...</p>
+          <span class="hint">Tippen zum Umdrehen ↻</span>
+        </div>
+        <div class="card-face card-back">
+          <p id="back-text" class="russian">Lade...</p>
+          <span class="hint">Tippen zum Zurückdrehen ↺</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button id="prevBtn">← Zurück</button>
+      <div class="dots" id="dots"></div>
+      <button id="nextBtn">Weiter →</button>
+    </div>
+    
+    <button class="reset-btn" id="resetBtn">↻ Neustart</button>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Daten
+      var cards = [
+        { front: "Lockere Reaktion: Wie kommt das denn?", back: "\u043A\u0430\u043A \u0442\u0430\u043A" },
+        { front: "Formelle Nachfrage: Wie ist das passiert?", back: "\u043A\u0430\u043A \u044D\u0442\u043E \u0441\u043B\u0443\u0447\u0438\u043B\u043E\u0441\u044C" },
+        { front: "Offizieller Kontext: Bitte erläutern Sie den Vorgang.", back: "\u043A\u0430\u043A \u044D\u0442\u043E \u043F\u0440\u043E\u0438\u0437\u043E\u0448\u043B\u043E" },
+        { front: "Emotional, umgangssprachlich", back: "\u043A\u0430\u043A \u0442\u0430\u043A" },
+        { front: "Sachlich, für Berichte geeignet", back: "\u043A\u0430\u043A \u044D\u0442\u043E \u0441\u043B\u0443\u0447\u0438\u043B\u043E\u0441\u044C" }
+      ];
+
+      var current = 0;
+      var flipped = false;
+
+      var card = document.getElementById('flashcard');
+      var frontEl = document.getElementById('front-text');
+      var backEl = document.getElementById('back-text');
+      var prevBtn = document.getElementById('prevBtn');
+      var nextBtn = document.getElementById('nextBtn');
+      var dotsEl = document.getElementById('dots');
+      var resetBtn = document.getElementById('resetBtn');
+
+      function showCard(index) {
+        flipped = false;
+        card.classList.remove('flipped');
+        
+        frontEl.textContent = cards[index].front;
+        backEl.textContent = cards[index].back;
+        
+        prevBtn.disabled = (index === 0);
+        nextBtn.disabled = (index === cards.length - 1);
+        
+        dotsEl.innerHTML = '';
+        for (var i = 0; i < cards.length; i++) {
+          var dot = document.createElement('div');
+          dot.className = 'dot' + (i === index ? ' active' : '');
+          dotsEl.appendChild(dot);
+        }
+      }
+
+      card.addEventListener('click', function() {
+        flipped = !flipped;
+        if (flipped) {
+          card.classList.add('flipped');
+        } else {
+          card.classList.remove('flipped');
+        }
+      });
+
+      prevBtn.addEventListener('click', function() {
+        if (current > 0) {
+          current--;
+          showCard(current);
+        }
+      });
+
+      nextBtn.addEventListener('click', function() {
+        if (current < cards.length - 1) {
+          current++;
+          showCard(current);
+        }
+      });
+
+      resetBtn.addEventListener('click', function() {
+        current = 0;
+        showCard(0);
+      });
+
+      // Erste Karte anzeigen
+      showCard(0);
+    });
+  </script>
+</body>
+</html>
