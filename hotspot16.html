@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aufgabe 8: Hotspot im Dialog</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --success: #15803d;
+      --error: #b91c1c;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #cbd5e1;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-style: normal; /* Explizit: KEINE Kursivschrift */
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: clamp(1rem, 4vw, 2rem);
+      max-width: 640px;
+      width: 100%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      font-size: clamp(1.2rem, 4vw, 1.5rem);
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .intro {
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    /* Chat-Layout */
+    .chat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 0.875rem 1rem;
+      border-radius: 16px;
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+
+    .msg.a {
+      align-self: flex-start;
+      background: #f1f5f9;
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg.b {
+      align-self: flex-end;
+      background: #eff6ff;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* Hotspot-Styling */
+    .hotspot {
+      display: inline-block;
+      padding: 6px 10px;
+      margin: 2px 0;
+      border-bottom: 2px dashed var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      min-height: 44px; /* Touch-optimiert */
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+    }
+
+    .hotspot:hover:not(.disabled) {
+      background: #e2e8f0;
+      border-color: var(--primary);
+    }
+
+    .hotspot.correct {
+      background: #dcfce7;
+      border-color: var(--success);
+      color: var(--success);
+      border-style: solid;
+    }
+
+    .hotspot.wrong {
+      background: #fee2e2;
+      border-color: var(--error);
+      color: var(--error);
+      border-style: solid;
+    }
+
+    .hotspot.disabled {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    /* Feedback */
+    .feedback {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: none;
+      font-size: 0.95rem;
+      border-left: 4px solid transparent;
+    }
+
+    .feedback.show { display: block; }
+    .feedback.success { background: #dcfce7; color: var(--success); border-color: var(--success); }
+    .feedback.error { background: #fee2e2; color: var(--error); border-color: var(--error); }
+
+    /* Neustart-Button */
+    .btn-reset {
+      width: 100%;
+      padding: 0.875rem;
+      border: none;
+      border-radius: 8px;
+      background: #e2e8f0;
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      min-height: 48px;
+      transition: background 0.2s;
+    }
+
+    .btn-reset:hover { background: #cbd5e1; }
+
+    /* Responsive Anpassungen */
+    @media (min-width: 640px) {
+      .msg { max-width: 75%; }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="card" role="main">
+    <h2>Aufgabe 8: Hotspot im Dialog</h2>
+    <p class="intro">
+      Tippe auf die russische Wendung im Chat, die „как так" entspricht.
+    </p>
+
+    <div class="chat" id="chat">
+      <div class="msg a">Ты знаешь, что Маша вчера сломала ногу?</div>
+      <div class="msg b">
+        <span class="hotspot" data-type="correct">Как так?</span>
+      </div>
+      <div class="msg a">Она упала с велосипеда.</div>
+      <div class="msg b">
+        Врач спросил: <span class="hotspot" data-type="wrong">как это случилось?</span>
+      </div>
+      <div class="msg a">
+        В протокол schreiben wir: <span class="hotspot" data-type="wrong">как это произошло.</span>
+      </div>
+    </div>
+
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+
+    <button id="resetBtn" class="btn-reset">↻ Neustart</button>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var chat = document.getElementById('chat');
+      var feedback = document.getElementById('feedback');
+      var resetBtn = document.getElementById('resetBtn');
+      var hotspots = document.querySelectorAll('.hotspot');
+
+      // Event-Delegation für alle Hotspots
+      chat.addEventListener('click', function(e) {
+        // Nur reagieren, wenn ein Hotspot geklickt wird und noch nicht deaktiviert ist
+        if (e.target.classList.contains('hotspot') && !e.target.classList.contains('disabled')) {
+          var type = e.target.getAttribute('data-type');
+          
+          // Alle Hotspots nach Auswahl deaktivieren
+          hotspots.forEach(function(h) { h.classList.add('disabled'); });
+          
+          if (type === 'correct') {
+            e.target.classList.add('correct');
+            feedback.className = 'feedback show success';
+            feedback.innerHTML = '✓ Richtig! „<strong>Как так?</strong>" ist die umgangssprachliche, überraschte Reaktion. Sie passt perfekt in diesen lockeren Chat.';
+          } else {
+            e.target.classList.add('wrong');
+            feedback.className = 'feedback show error';
+            feedback.innerHTML = '✗ Das ist nicht „как так". Diese Wendungen sind formell oder sachlich. Die gesuchte umgangssprachliche Reaktion ist „Как так?".';
+          }
+        }
+      });
+
+      // Neustart-Logik
+      resetBtn.addEventListener('click', function() {
+        hotspots.forEach(function(h) {
+          h.classList.remove('correct', 'wrong', 'disabled');
+        });
+        feedback.className = 'feedback';
+        feedback.innerHTML = '';
+        resetBtn.blur(); // Fokus zurücksetzen für bessere Bedienung
+      });
+    });
+  </script>
+</body>
+</html>
