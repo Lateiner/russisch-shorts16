@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Übung 4: Dialog-Reihenfolge</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #15803d;
+      --error: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #cbd5e1;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      --drag-bg: #eff6ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
+    }
+
+    .exercise-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(1rem, 4vw, 2rem);
+      max-width: 760px;
+      width: 100%;
+    }
+
+    h2 { font-size: clamp(1.25rem, 4vw, 1.75rem); margin-bottom: 0.5rem; }
+    .intro { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .instruction { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; background: #f1f5f9; padding: 0.5rem 0.75rem; border-radius: 8px; }
+
+    /* Sortierliste */
+    .sort-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding: 0;
+    }
+
+    .sort-item {
+      background: #f8fafc;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      cursor: grab;
+      touch-action: none; /* Verhindert Scroll-Konflikte beim Ziehen */
+      user-select: none;
+      transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s, background 0.2s;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .sort-item:active { cursor: grabbing; }
+    .sort-item.selected { border-color: var(--primary); background: var(--drag-bg); box-shadow: 0 4px 12px rgb(37 99 235 / 0.15); }
+    .sort-item.dragging { opacity: 0.4; transform: scale(0.98); }
+    .sort-item.correct { border-color: var(--success); background: #dcfce7; color: var(--success); font-weight: 600; }
+    .sort-item.incorrect { border-color: var(--error); background: #fee2e2; color: var(--error); }
+    .sort-item .russian { font-weight: 600; } /* Explizit keine Kursivschrift */
+
+    .sort-item .handle {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      pointer-events: none;
+    }
+
+    @media (min-width: 640px) {
+      .sort-item { justify-content: flex-start; padding-left: 2.5rem; text-align: left; }
+      .sort-item .handle { top: 50%; transform: translateY(-50%); }
+    }
+
+    /* Controls */
+    .controls { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .btn {
+      flex: 1; min-width: 140px; padding: 0.875rem 1.25rem; border: none;
+      border-radius: 8px; font-size: 1rem; cursor: pointer; min-height: 48px;
+      transition: background 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .hidden { display: none; }
+
+    /* Feedback */
+    .feedback {
+      padding: 1rem; border-radius: 8px; margin-top: 1rem; display: none; font-size: 0.95rem;
+    }
+    .feedback.success { background: #dcfce7; color: var(--success); border-left: 4px solid var(--success); }
+    .feedback.error { background: #fee2e2; color: var(--error); border-left: 4px solid var(--error); }
+  </style>
+</head>
+<body>
+
+  <main class="exercise-card" role="main">
+    <h2>Aufgabe 4: Dialog-Reihenfolge</h2>
+    <p class="intro">
+      Bringe die durcheinandergeratenen Satzteile in die richtige Reihenfolge, damit ein sinnvoller Dialog entsteht.
+    </p>
+    <p class="instruction">
+      💡 <strong>Desktop:</strong> Ziehe die Karten per Maus.<br>
+      📱 <strong>Touch:</strong> Tippe eine Karte an, dann tippe auf die Zielposition.
+    </p>
+
+    <ul class="sort-list" id="sortList" aria-label="Dialogkarten"></ul>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="checkBtn">Überprüfen</button>
+      <button class="btn btn-secondary" id="resetBtn">Neustart</button>
+    </div>
+
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const sortList = document.getElementById('sortList');
+      const checkBtn = document.getElementById('checkBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const feedback = document.getElementById('feedback');
+
+      // Korrekte Dialog-Reihenfolge
+      const correctDialog = [
+        { id: 'A', text: 'Ты знаешь, что Маша вчера сломала ногу?' },
+        { id: 'B', text: 'Как так?' },
+        { id: 'C', text: 'Она упала с велосипеда.' },
+        { id: 'D', text: 'Бедная Маша! Надеюсь, она скоро поправится.' }
+      ];
+
+      let currentItem = null; // Für Touch-Auswahl
+
+      // Hilfsfunktion: Array mischen
+      function shuffle(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+
+      // Liste rendern
+      function renderList() {
+        sortList.innerHTML = '';
+        const shuffled = shuffle(correctDialog);
+        shuffled.forEach((item, index) => {
+          const li = document.createElement('li');
+          li.className = 'sort-item';
+          li.dataset.id = item.id;
+          li.draggable = true; // HTML5 DnD für Desktop
+          li.setAttribute('aria-label', `Dialogzeile ${index + 1}: ${item.text}`);
+          li.innerHTML = `<span class="handle">☰</span> <span class="russian">${item.text}</span>`;
+          sortList.appendChild(li);
+        });
+        initInteraction();
+      }
+
+      // Interaktion: HTML5 DnD + Touch-Fallback
+      function initInteraction() {
+        const items = sortList.querySelectorAll('.sort-item');
+        
+        // HTML5 Drag & Drop (Desktop)
+        items.forEach(item => {
+          item.addEventListener('dragstart', e => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.dataset.id);
+            item.classList.add('dragging');
+          });
+          item.addEventListener('dragend', () => item.classList.remove('dragging'));
+          item.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+          });
+          item.addEventListener('drop', e => {
+            e.preventDefault();
+            const draggedId = e.dataTransfer.getData('text/plain');
+            const targetId = item.dataset.id;
+            swapItems(draggedId, targetId);
+          });
+        });
+
+        // Touch-Fallback: Tippen & Tauschen (Mobil)
+        items.forEach(item => {
+          item.addEventListener('click', e => {
+            if (e.target.closest('.btn')) return;
+            if (!currentItem) {
+              currentItem = item;
+              item.classList.add('selected');
+            } else if (currentItem === item) {
+              item.classList.remove('selected');
+              currentItem = null;
+            } else {
+              swapItems(currentItem.dataset.id, item.dataset.id);
+              currentItem.classList.remove('selected');
+              currentItem = null;
+            }
+          });
+        });
+
+        // Klick auf leeren Bereich hebt Auswahl auf
+        sortList.addEventListener('click', e => {
+          if (e.target === sortList && currentItem) {
+            currentItem.classList.remove('selected');
+            currentItem = null;
+          }
+        });
+      }
+
+      // DOM neu anordnen
+      function swapItems(idA, idB) {
+        const itemA = document.querySelector(`[data-id="${idA}"]`);
+        const itemB = document.querySelector(`[data-id="${idB}"]`);
+        if (!itemA || !itemB || idA === idB) return;
+
+        const parent = itemA.parentNode;
+        const nextA = itemA.nextSibling === itemB ? itemA.nextSibling.nextSibling : itemA.nextSibling;
+        parent.insertBefore(itemB, itemA);
+        if (nextA) parent.insertBefore(itemA, nextA);
+        else parent.appendChild(itemA);
+        
+        // Visuelles Feedback kurz anzeigen
+        itemA.classList.add('selected');
+        itemB.classList.add('selected');
+        setTimeout(() => {
+          itemA.classList.remove('selected');
+          itemB.classList.remove('selected');
+        }, 300);
+      }
+
+      // Überprüfung
+      checkBtn.addEventListener('click', () => {
+        const currentOrder = Array.from(sortList.children).map(li => li.dataset.id);
+        const correctOrder = correctDialog.map(d => d.id);
+        
+        const allCorrect = currentOrder.every((id, i) => id === correctOrder[i]);
+        
+        sortList.querySelectorAll('.sort-item').forEach(li => {
+          li.classList.remove('correct', 'incorrect');
+          const idx = Array.from(sortList.children).indexOf(li);
+          li.classList.add(currentOrder[idx] === correctOrder[idx] ? 'correct' : 'incorrect');
+        });
+
+        feedback.style.display = 'block';
+        if (allCorrect) {
+          feedback.className = 'feedback success';
+          feedback.innerHTML = `<strong>Perfekt!</strong><br>Der Dialog ist logisch aufgebaut: Nachricht → Überraschung (<span class="russian">Как так?</span>) → Erklärung → Reaktion.<br><span class="russian">Как так?</span> steht hier immer direkt nach der überraschenden Mitteilung.`;
+        } else {
+          feedback.className = 'feedback error';
+          feedback.textContent = 'Noch nicht ganz richtig. Die rot markierten Karten sind falsch platziert. Tippe sie an und tausche sie mit der richtigen Position.';
+        }
+        checkBtn.focus();
+      });
+
+      // Neustart
+      resetBtn.addEventListener('click', () => {
+        if (currentItem) {
+          currentItem.classList.remove('selected');
+          currentItem = null;
+        }
+        renderList();
+        feedback.style.display = 'none';
+        feedback.innerHTML = '';
+        checkBtn.focus();
+      });
+
+      // Initial
+      renderList();
+    });
+  </script>
+</body>
+</html>
